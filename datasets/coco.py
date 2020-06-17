@@ -115,21 +115,34 @@ class ConvertCocoPolysToMask(object):
 def make_coco_transforms(image_set):
 
     normalize = T.Compose([
+        T.Grayscale(),
         T.ToTensor(),
-        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        #T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        T.Normalize([0.5], [0.5])
     ])
 
+    scales = [
+        600,  663,  726,  789,  852,  915,  978, 1042, 1105, 1168, 1231,
+        1294, 1357, 1421, 1484, 1547, 1610, 1673, 1736, 1800
+    ]
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
 
     if image_set == 'train':
         return T.Compose([
-            T.RandomHorizontalFlip(),
+            #torchvision.transforms.Grayscale(num_output_channels=1),
+            #T.RandomHorizontalFlip(),
             T.RandomSelect(
                 T.RandomResize(scales, max_size=1333),
+                #T.RandomResize(scales, max_size=2000),
                 T.Compose([
-                    T.RandomResize([400, 500, 600]),
-                    T.RandomSizeCrop(384, 600),
+                    #T.RandomResize([400, 500, 600]),
+                    #T.RandomResize([1600, 1800]),
+                    T.RandomResize([1000, 1200]),
+                    #T.RandomSizeCrop(384, 600),
+                    #T.RandomSizeCrop(1200, 1600),
+                    T.RandomSizeCrop(800, 1000),
                     T.RandomResize(scales, max_size=1333),
+                    #T.RandomResize(scales, max_size=2000),
                 ])
             ),
             normalize,
@@ -137,7 +150,8 @@ def make_coco_transforms(image_set):
 
     if image_set == 'val':
         return T.Compose([
-            T.RandomResize([800], max_size=1333),
+            #T.RandomResize([800], max_size=1333),
+            T.RandomResize([1800], max_size=2000),
             normalize,
         ])
 
