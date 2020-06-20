@@ -13,6 +13,10 @@ from pycocotools import mask as coco_mask
 
 import datasets.transforms as T
 
+import pywt
+import numpy as np
+from PIL import Image
+
 
 class CocoDetection(torchvision.datasets.CocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks):
@@ -25,6 +29,20 @@ class CocoDetection(torchvision.datasets.CocoDetection):
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
         img, target = self.prepare(img, target)
+        #print('1', img.size)
+        img = np.asarray(img.convert('L'))
+        #print('2', img.shape)
+        ll, (lh, hl, hh) = pywt.dwt2(img, 'bior3.5')
+        ll = ll - ll.min()
+        ll = ll/ll.max()
+        ll = ll*10 - 5
+        img = np.stack((ll,lh,hl)).transpose(1,2,0)
+        img = np.clip(img+5, 0, 10)*25.5
+        #print('3', img.shape)
+        img = Image.fromarray(img.astype('uint8'))
+        #print('4', img.size)
+        target['boxes'] = target['boxes']/2
+        #print(target['boxes'])
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target

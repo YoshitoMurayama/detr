@@ -275,9 +275,3 @@ class Compose(object):
         format_string += "\n)"
         return format_string
 
-class Grayscale(object):
-    def __init__(self):
-        super().__init__()
-        self._function = T.Grayscale()
-    def __call__(self, image, target):
-        return self._function(image), target
