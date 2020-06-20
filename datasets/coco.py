@@ -33,11 +33,19 @@ class CocoDetection(torchvision.datasets.CocoDetection):
         img = np.asarray(img.convert('L'))
         #print('2', img.shape)
         ll, (lh, hl, hh) = pywt.dwt2(img, 'bior3.5')
-        ll = ll - ll.min()
-        ll = ll/ll.max()
-        ll = ll*10 - 5
-        img = np.stack((ll,lh,hl)).transpose(1,2,0)
-        img = np.clip(img+5, 0, 10)*25.5
+        def _norm(a):
+            a = a - a.min()
+            a = a/a.max()
+            return a
+        #ll = ll - ll.min()
+        #ll = ll/ll.max()
+        #ll = ll*10 - 5
+        img = np.stack([_norm(x) for x in [ll,lh,hl]]).transpose(1,2,0)*255
+        #img = np.stack([ll,lh,hl]).transpose(1,2,0)
+        #jimg = img - img.min(0)
+        #img = img/img.max(0)
+        #img = img * 255
+        #img = np.clip(img+5, 0, 10)*25.5
         #print('3', img.shape)
         img = Image.fromarray(img.astype('uint8'))
         #print('4', img.size)
@@ -134,23 +142,25 @@ def make_coco_transforms(image_set):
 
     normalize = T.Compose([
         T.ToTensor(),
-        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        #T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+         T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     ])
 
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+    scales = [240, 268, 297, 326, 355, 384, 413, 442, 471, 500]
 
     if image_set == 'train':
         return T.Compose([
             #torchvision.transforms.Grayscale(num_output_channels=1),
             #T.RandomHorizontalFlip(),
             T.RandomSelect(
-                T.RandomResize(scales, max_size=1333),
+                T.RandomResize(scales, max_size=707),
                 T.Compose([
                     #T.RandomResize([400, 500, 600]),
-                    T.RandomResize([1000, 1200]),
+                    T.RandomResize([800, 1200]),
                     #T.RandomSizeCrop(384, 600),
-                    T.RandomSizeCrop(800, 1000),
-                    T.RandomResize(scales, max_size=1333),
+                    T.RandomSizeCrop(600, 800),
+                    T.RandomResize(scales, max_size=707),
                 ])
             ),
             normalize,
@@ -158,7 +168,7 @@ def make_coco_transforms(image_set):
 
     if image_set == 'val':
         return T.Compose([
-            T.RandomResize([800], max_size=1333),
+            T.RandomResize([500], max_size=707),
             normalize,
         ])
 
