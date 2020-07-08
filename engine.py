@@ -148,4 +148,9 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
         stats['PQ_all'] = panoptic_res["All"]
         stats['PQ_th'] = panoptic_res["Things"]
         stats['PQ_st'] = panoptic_res["Stuff"]
+    if 'bbox' in postprocessors.keys():
+        anns = coco_evaluator.anns
+        for i in range(len(anns)):
+            anns[i]['id'] = i
+        coco_evaluator.coco_eval['bbox'].cocoDt.dataset['annotations'] = anns
     return stats, coco_evaluator

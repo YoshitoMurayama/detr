@@ -24,6 +24,7 @@ class CocoEvaluator(object):
         assert isinstance(iou_types, (list, tuple))
         coco_gt = copy.deepcopy(coco_gt)
         self.coco_gt = coco_gt
+        self.anns = []
 
         self.iou_types = iou_types
         self.coco_eval = {}
@@ -46,6 +47,10 @@ class CocoEvaluator(object):
                     coco_dt = COCO.loadRes(self.coco_gt, results) if results else COCO()
             coco_eval = self.coco_eval[iou_type]
 
+            if self.anns == []:
+                self.anns = list(coco_dt.anns.values())
+            else:
+                self.anns += list(coco_dt.anns.values())
             coco_eval.cocoDt = coco_dt
             coco_eval.params.imgIds = list(img_ids)
             img_ids, eval_imgs = evaluate(coco_eval)
