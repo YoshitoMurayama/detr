@@ -65,7 +65,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
 
 @torch.no_grad()
-def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, output_dir):
+def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, output_dir, num_queries):
     model.eval()
     criterion.eval()
 
@@ -75,6 +75,8 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
 
     iou_types = tuple(k for k in ('segm', 'bbox') if k in postprocessors.keys())
     coco_evaluator = CocoEvaluator(base_ds, iou_types)
+    if num_queries > 100:
+        coco_evaluator.coco_eval['bbox'].params.maxDets = [1, 100, num_queries]
     # coco_evaluator.coco_eval[iou_types[0]].params.iouThrs = [0, 0.1, 0.5, 0.75]
 
     panoptic_evaluator = None
@@ -131,6 +133,11 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
     if panoptic_evaluator is not None:
         panoptic_evaluator.synchronize_between_processes()
 
+    if 'bbox' in postprocessors.keys():
+        anns = coco_evaluator.anns
+        for i in range(len(anns)):
+            anns[i]['id'] = i
+        coco_evaluator.coco_eval['bbox'].cocoDt.dataset['annotations'] = anns
     # accumulate predictions from all images
     if coco_evaluator is not None:
         coco_evaluator.accumulate()
@@ -148,9 +155,4 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
         stats['PQ_all'] = panoptic_res["All"]
         stats['PQ_th'] = panoptic_res["Things"]
         stats['PQ_st'] = panoptic_res["Stuff"]
-    if 'bbox' in postprocessors.keys():
-        anns = coco_evaluator.anns
-        for i in range(len(anns)):
-            anns[i]['id'] = i
-        coco_evaluator.coco_eval['bbox'].cocoDt.dataset['annotations'] = anns
     return stats, coco_evaluator
