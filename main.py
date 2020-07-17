@@ -188,7 +188,8 @@ def main(args):
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
                                               data_loader_val, base_ds, device, args.output_dir, args.num_queries)
         if args.output_dir:
-            utils.save_on_master(coco_evaluator.coco_eval["bbox"], output_dir / "eval.pth")
+            fname = args.resume.split('/')[-1].replace('checkpoint', 'eval')
+            utils.save_on_master(coco_evaluator.coco_eval["bbox"], output_dir / fname)
             #utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
         return
 
@@ -204,7 +205,7 @@ def main(args):
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
             # extra checkpoint before LR drop and every 100 epochs
-            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 20 == 0:
+            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 10 == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
@@ -216,7 +217,8 @@ def main(args):
                 }, checkpoint_path)
 
         test_stats, coco_evaluator = evaluate(
-            model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
+            model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir,
+            args.num_queries
         )
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},

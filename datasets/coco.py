@@ -119,38 +119,45 @@ def make_coco_transforms(image_set):
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    scales = [480,  537,  595,  653,  711,  768,  826,  884,  942, 1000]
-    set_max = 1000
-    max_size = 1414
+    if 0: #default
+        scales = [480,  537,  595,  653,  711,  768,  826,  884,  942, 1000]
+        max_size = 1414
+    elif 0: #10%up
+        scales = [528,  585,  642,  699,  756,  814,  871,  928,  985, 1042, 1100]
+        max_size = 1555
+    elif 1: #20%up
+        scales = [576,  638,  700,  763,  825,  888,  950, 1012, 1075, 1137, 1200]
+        max_size = 1696
+    elif 0: #30%up
+        scales = [624,  691,  759,  826,  894,  962, 1029, 1097, 1164, 1232, 1300]
+        max_size = 1838
+    elif 1: #50%up
+        scales = [720,  798,  876,  954, 1032, 1110, 1188, 1266, 1344, 1422, 1500]
+        max_size = 2121
+
+
 
     if image_set == 'train':
         return T.Compose([
             T.RandomSelect(
+                T.RandomRotate([-0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6]),
                 T.Compose([
-                    # T.RandomRotate(ROTATE_DISTRIBUTION),
-                    T.RandomRotate([-0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6]),
-                    T.RandomResize(scales, max_size=1414),
+                    T.RandomResize([1800, 2000]),
+                    T.RandomSelect(
+                        T.RandomSizeCrop(1600, 1800),
+                        T.RandomSizeCrop(1000, 1400),
+                        p = 0.66
+                    )
                 ]),
-                T.RandomSelect(
-                    T.RandomResize(scales, max_size=1414),
-                    T.Compose([
-                        T.RandomResize([2000]),
-                        T.RandomSelect(
-                            T.RandomSizeCrop(1800, 2000),
-                            T.RandomSizeCrop(1000, 1600),
-                            p = 0.7
-                        ),
-                        T.RandomResize(scales, max_size=1414),
-                    ]),
-                    p = 0.66
-                ),
+                p = 0.33,
             ),
+            T.RandomResize(scales, max_size=max_size),
             normalize,
         ])
 
     if image_set == 'val':
         return T.Compose([
-            T.RandomResize([set_max], max_size=max_size),
+            T.RandomResize([max(scales)], max_size=max_size),
             normalize,
         ])
 
