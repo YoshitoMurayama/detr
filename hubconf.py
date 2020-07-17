@@ -167,17 +167,3 @@ def detr_resnet101_panoptic(
         return model, PostProcessPanoptic(is_thing_map, threshold=threshold)
     return model
 
-def invoice(pretrained=False, num_classes=91, return_postprocessor=False):
-    """
-    DETR R50 with 6 encoder and 6 decoder layers.
-
-    """
-    model = _make_detr("resnet50", dilation=False, num_classes=num_classes)
-    if pretrained:
-        checkpoint = torch.hub.load_state_dict_from_url(
-            url="invoice_large_transfer/checkpoint.pth", map_location="cpu", check_hash=True
-        )
-        model.load_state_dict(checkpoint["model"])
-    if return_postprocessor:
-        return model, PostProcess()
-    return model
