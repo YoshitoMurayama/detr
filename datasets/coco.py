@@ -5,30 +5,68 @@ COCO dataset which returns image_id for evaluation.
 Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/coco_utils.py
 """
 from pathlib import Path
+import os
+
+import numpy as np
+import cv2
 
 import torch
 import torch.utils.data
 import torchvision
 from pycocotools import mask as coco_mask
+from PIL import Image
 
 import datasets.transforms as T
 
+def imread(file_path):
+
+    ext = os.path.splitext(file_path)[1].lower()
+
+    if ext == ".npy":
+        return np.load(file_path)
+    else:
+        return cv2.imread(file_path)
 
 class CocoDetection(torchvision.datasets.CocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks):
         super(CocoDetection, self).__init__(img_folder, ann_file)
         self._transforms = transforms
         self.prepare = ConvertCocoPolysToMask(return_masks)
+        self.dbg_ii = 0
 
     def __getitem__(self, idx):
-        img, target = super(CocoDetection, self).__getitem__(idx)
-        image_id = self.ids[idx]
-        target = {'image_id': image_id, 'annotations': target}
+
+        coco = self.coco
+        img_id = self.ids[idx]
+        ann_ids = coco.getAnnIds(imgIds=img_id)
+        target = coco.loadAnns(ann_ids)
+
+        path = coco.loadImgs(img_id)[0]['file_name']
+
+        img = imread(path)
+        img = img[:,:,::-1] # bgr2rgb
+        img = Image.fromarray(img)
+
+        if self.transforms is not None:
+            img, target = self.transforms(img, target)
+
+        #dbg
+        # if self.dbg_ii < 20:
+        #     _img = np.asarray(img)
+        #     for obj in target:
+        #         xx, yy, ww, hh = obj['bbox']
+        #         cv2.rectangle(_img, (int(xx), int(yy)), (int(xx+ww), int(yy+hh)), (0,255,0),2)
+
+        #     fn = "dbg/{0:03d}.jpg".format(self.dbg_ii)
+        #     cv2.imwrite(fn, _img)
+        #     self.dbg_ii += 1
+
+        target = {'image_id': img_id, 'annotations': target}
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-        return img, target
 
+        return img, target
 
 def convert_coco_poly_to_mask(segmentations, height, width):
     masks = []
@@ -71,6 +109,9 @@ class ConvertCocoPolysToMask(object):
         classes = [obj["category_id"] for obj in anno]
         classes = torch.tensor(classes, dtype=torch.int64)
 
+        attrs = [obj["attribute_id"] for obj in anno]
+        attrs = torch.tensor(attrs, dtype=torch.int64)
+
         if self.return_masks:
             segmentations = [obj["segmentation"] for obj in anno]
             masks = convert_coco_poly_to_mask(segmentations, h, w)
@@ -94,6 +135,7 @@ class ConvertCocoPolysToMask(object):
         target = {}
         target["boxes"] = boxes
         target["labels"] = classes
+        target["attrs"] = attrs
         if self.return_masks:
             target["masks"] = masks
         target["image_id"] = image_id
@@ -119,25 +161,27 @@ def make_coco_transforms(image_set):
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+    #scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+    scales = [1920]
 
     if image_set == 'train':
         return T.Compose([
-            T.RandomHorizontalFlip(),
-            T.RandomSelect(
-                T.RandomResize(scales, max_size=1333),
-                T.Compose([
-                    T.RandomResize([400, 500, 600]),
-                    T.RandomSizeCrop(384, 600),
-                    T.RandomResize(scales, max_size=1333),
-                ])
-            ),
+            T.RandomResize(scales, max_size=1920),
+            # T.RandomHorizontalFlip(),
+            # T.RandomSelect(
+            #     T.RandomResize(scales, max_size=1333),
+            #     T.Compose([
+            #         T.RandomResize([400, 500, 600]),
+            #         T.RandomSizeCrop(384, 600),
+            #         T.RandomResize(scales, max_size=1333),
+            #     ])
+            # ),
             normalize,
         ])
 
     if image_set == 'val':
         return T.Compose([
-            T.RandomResize([800], max_size=1333),
+            T.RandomResize([1920], max_size=1920),
             normalize,
         ])
 
@@ -151,6 +195,18 @@ def build(image_set, args):
     PATHS = {
         "train": (root / "train2017", root / "annotations" / f'{mode}_train2017.json'),
         "val": (root / "val2017", root / "annotations" / f'{mode}_val2017.json'),
+    }
+
+    img_folder, ann_file = PATHS[image_set]
+    dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set), return_masks=args.masks)
+    return dataset
+
+def build_health(image_set, args):
+    root = Path(args.coco_path)
+    assert root.exists(), f'provided COCO path {root} does not exist'
+    PATHS = {
+        "train": ("", root / "health_train.json"),
+        "val": ("", root / 'health_test.json'),
     }
 
     img_folder, ann_file = PATHS[image_set]

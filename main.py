@@ -90,6 +90,7 @@ def get_args_parser():
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--resume', default='', help='resume from checkpoint')
+    parser.add_argument('--pretrained', default='', help='load_pretrained model')
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
@@ -180,6 +181,24 @@ def main(args):
             optimizer.load_state_dict(checkpoint['optimizer'])
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             args.start_epoch = checkpoint['epoch'] + 1
+
+    if args.pretrained:
+        if args.pretrained.startswith('https'):
+            checkpoint = torch.hub.load_state_dict_from_url(
+                args.pretrained, map_location='cpu', check_hash=True)
+        else:
+            checkpoint = torch.load(args.pretrained, map_location='cpu')
+
+        pretrained_state    = checkpoint['model']
+        model_state         = model_without_ddp.state_dict()
+        # discard shape mismatch / irrelevant keys in predtrained
+        pretrained_state    = { k:v for k,v in pretrained_state.items() if k in model_state and v.size() == model_state[k].size() }
+        # debug
+        for k,v in pretrained_state.items() :
+            print(k)
+        # update training model
+        model_state.update(pretrained_state)
+        model_without_ddp.load_state_dict(model_state)
 
     if args.eval:
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
