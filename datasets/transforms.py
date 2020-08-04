@@ -3,6 +3,7 @@
 Transforms and data augmentation for both image + bbox.
 """
 import random
+import math
 
 import PIL
 import torch
@@ -144,6 +145,36 @@ def pad(image, target, padding):
         target['masks'] = torch.nn.functional.pad(target['masks'], (0, padding[0], 0, padding[1]))
     return padded_image, target
 
+def rotate(image, target, degree):
+    def get_newbox(a):
+        xs, ys = a.unbind(-1)
+        x, xd = xs.min(), xs.max()
+        y, yd = ys.min(), ys.max()
+        return [x, y, xd, yd]
+
+    rotated_image = F.rotate(image, degree)
+    if "boxes" in target:
+        boxes = target["boxes"]
+        cx, cy = image.size[0]/2, image.size[1]/2
+        rad = -(degree % 360) / 360 * 2 * math.pi
+        x, y, xd, yd = boxes.unbind(-1)
+        xa, ya = torch.cat((x, x, xd, xd)), torch.cat((y, yd, yd, y))
+        dRx, dRy = xa - cx, ya - cy
+        R = torch.pow(dRx ** 2 + dRy ** 2, 0.5)
+        posneg = [1. if x > 0 else -1. for x in dRy]
+        alpha = torch.acos(dRx / R) * torch.FloatTensor(posneg)
+        theta = alpha + rad
+        nx = R * torch.cos(theta) + cx
+        ny = R * torch.sin(theta) + cy
+        locs = torch.cat((nx[..., None], ny[..., None]), 1).reshape(4, -1, 2).permute(1, 0, 2)
+        target["boxes"] = torch.FloatTensor([get_newbox(a) for a in locs])
+
+    if "area" in target:
+        target["area"] = torch.FloatTensor([x[2]*x[3] for x in target["boxes"]])
+
+    return rotated_image, target
+
+
 
 class RandomCrop(object):
     def __init__(self, size):
@@ -162,6 +193,19 @@ class RandomSizeCrop(object):
     def __call__(self, img: PIL.Image.Image, target: dict):
         w = random.randint(self.min_size, min(img.width, self.max_size))
         h = random.randint(self.min_size, min(img.height, self.max_size))
+        region = T.RandomCrop.get_params(img, [h, w])
+        return crop(img, target, region)
+
+class RandomSizeCrop2(object):
+    def __init__(self, width_size, height_size):
+        self.width_min, self.width_max = width_size
+        self.height_min, self.height_max = height_size
+
+    def __call__(self, img: PIL.Image.Image, target: dict):
+        _w, _h = img.width, img.height
+        w = random.randint(int(self.width_min*_w), int(self.width_max*_w))
+        h = random.randint(int(self.height_min*_h), int(self.height_max*_h))
+
         region = T.RandomCrop.get_params(img, [h, w])
         return crop(img, target, region)
 
@@ -274,3 +318,20 @@ class Compose(object):
             format_string += "    {0}".format(t)
         format_string += "\n)"
         return format_string
+
+
+class Grayscale(object):
+    def __init__(self):
+        super().__init__()
+        self._function = T.Grayscale()
+    def __call__(self, image, target):
+        return self._function(image), target
+
+
+class RandomRotate(object):
+    def __init__(self, degrees):
+        self.degrees = degrees
+
+    def __call__(self, image, target):
+        return rotate(image, target, random.choice(self.degrees))
+
