@@ -105,6 +105,18 @@ def get_args_parser():
     parser.add_argument('--adjust_cost_class', default=None, type=float)
     parser.add_argument('--adjust_cost_bbox', default=None, type=float)
     parser.add_argument('--pretrained', default='', help='weight from checkpoint')
+    parser.add_argument('--num_classes', default=91, type=int)
+    parser.add_argument('--num_scales_div', default=11, type=int)
+    parser.add_argument('--scale_factor', default=1, type=float)
+    parser.add_argument('--valid_scale', default=1, type=float)
+    parser.add_argument('--global_threshold', default=0.98, type=float)
+    parser.add_argument('--local_threshold', default=0.8, type=float)
+    parser.add_argument('--long_short_ratio', default=1.414, type=float)
+    parser.add_argument('--local_width_min', default=0.9, type=float)
+    parser.add_argument('--local_height_min', default=0.6, type=float)
+    parser.add_argument('--global_local_ratio', default=0.5, type=float)
+
+
 
     return parser
 
