@@ -124,19 +124,23 @@ def make_coco_transforms(image_set, args):
     #base_scales = [480,  537,  595,  653,  711,  768,  826,  884,  942, 1000]
     base_scales = np.linspace(480, 1000, args.num_scales_div).astype('int')
 
-    train_scales = [int(x*args.scale_factor) for x in base_scales]
+    train_scales = [int(x * args.scale_factor) for x in base_scales]
     train_max = max(train_scales)
-    valid_scale = int(train_max*args.valid_scale)
-    valid_max = int(valid_scale*args.long_short_ratio)
-    train_max = int(train_max*args.long_short_ratio)
-    local_scales = [int(x*args.valid_scale) for x in train_scales]
-    local_scales = [x for x in local_scales if x > train_max*args.local_threshold and x<=train_max]
+    valid_scale = int(train_max * args.valid_scale)
+    valid_max = int(valid_scale * args.long_short_ratio)
+    train_max = int(train_max * args.long_short_ratio)
+    local_scales = [int(x * args.valid_scale / args.global_threshold) for x in train_scales]
+    #local_threshold = max(local_scales) * args.local_threshold
+    #local_scales = [x for x in local_scales if x >= local_threshold]
+    local_max = int(max(local_scales) * args.long_short_ratio)
     all_range = [np.clip(args.global_threshold, 0.1, 0.999), 1]
-    width_range = [np.clip(args.local_width_min, 0.1, 0.999), min(all_range)]
-    height_range = [np.clip(args.local_height_min, 0.1, 0.999), min(all_range)]
+    width_range = [np.clip(args.local_width_min, 0.1, 0.999), args.local_threshold]
+    height_range = [np.clip(args.local_height_min, 0.1, 0.999), args.local_threshold]
     print('train_scales : ', train_scales, train_max)
-    print('local_scales : ', local_scales)
+    print('local_scales : ', local_scales, local_max)
     print('valid_scale : ', valid_scale, valid_max)
+    print('global crop : ', all_range, all_range)
+    print('local crop : ', width_range, height_range)
 
     if image_set == 'train':
         return T.Compose([
@@ -146,7 +150,7 @@ def make_coco_transforms(image_set, args):
                     T.RandomResize(train_scales, max_size=train_max),
                 ]),
                 T.Compose([
-                    T.RandomResize(local_scales, max_size=train_max),
+                    T.RandomResize(local_scales, max_size=local_max),
                     T.RandomSizeCrop2(width_range, height_range),
                 ]),
                 p = args.global_local_ratio
