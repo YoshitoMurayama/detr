@@ -129,7 +129,8 @@ def make_coco_transforms(image_set, args):
     valid_scale = int(train_max * args.valid_scale)
     valid_max = int(valid_scale * args.long_short_ratio)
     train_max = int(train_max * args.long_short_ratio)
-    local_scales = [int(x * args.valid_scale / args.global_threshold) for x in train_scales]
+    #local_scales = [int(x * args.valid_scale / args.global_threshold) for x in train_scales]
+    local_scales = [int(x * args.valid_scale) for x in train_scales]
     #local_threshold = max(local_scales) * args.local_threshold
     #local_scales = [x for x in local_scales if x >= local_threshold]
     local_max = int(max(local_scales) * args.long_short_ratio)

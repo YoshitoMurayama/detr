@@ -115,6 +115,7 @@ def get_args_parser():
     parser.add_argument('--local_width_min', default=0.9, type=float)
     parser.add_argument('--local_height_min', default=0.6, type=float)
     parser.add_argument('--global_local_ratio', default=0.5, type=float)
+    parser.add_argument('--save_threshold', default=0.9, type=float)
 
 
 
@@ -230,6 +231,7 @@ def main(args):
     if args.adjust_cost_bbox is not None:
         criterion.matcher.cost_class = args.adjust_cost_bbox
 
+    ref_mAP = args.save_threshold
     print("Start training")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
@@ -239,10 +241,21 @@ def main(args):
             model, criterion, data_loader_train, optimizer, device, epoch,
             args.clip_max_norm)
         lr_scheduler.step()
+
+        test_stats, coco_evaluator = evaluate(
+            model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir,
+            args.num_queries
+        )
+        mAP = coco_evaluator.coco_eval["bbox"].eval['precision'][0][:,:,0,2].mean(0)
+        mAP = np.round(mAP[mAP>-1].mean(),4)
+
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
             # extra checkpoint before LR drop and every 100 epochs
-            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 10 == 0:
+            if mAP > ref_mAP:
+                ref_mAP = mAP
+                checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}_{mAP:.4f}.pth')
+            elif (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 10 == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
@@ -252,11 +265,6 @@ def main(args):
                     'epoch': epoch,
                     'args': args,
                 }, checkpoint_path)
-
-        test_stats, coco_evaluator = evaluate(
-            model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir,
-            args.num_queries
-        )
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      **{f'test_{k}': v for k, v in test_stats.items()},
