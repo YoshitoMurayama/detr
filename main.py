@@ -116,6 +116,7 @@ def get_args_parser():
     parser.add_argument('--local_height_min', default=0.6, type=float)
     parser.add_argument('--global_local_ratio', default=0.5, type=float)
     parser.add_argument('--save_threshold', default=0.9, type=float)
+    parser.add_argument('--max_dets', default=100, type=int)
 
 
 
@@ -219,7 +220,7 @@ def main(args):
 
     if args.eval:
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
-                                              data_loader_val, base_ds, device, args.output_dir, args.num_queries)
+                                              data_loader_val, base_ds, device, args.output_dir, args.max_dets)
         if args.output_dir:
             fname = args.resume.split('/')[-1].replace('checkpoint', 'eval')
             utils.save_on_master(coco_evaluator.coco_eval["bbox"], output_dir / fname)
@@ -244,7 +245,7 @@ def main(args):
 
         test_stats, coco_evaluator = evaluate(
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir,
-            args.num_queries
+            args.max_dets
         )
         mAP = coco_evaluator.coco_eval["bbox"].eval['precision'][0][:,:,0,2].mean(0)
         mAP = np.round(mAP[mAP>-1].mean(),4)
