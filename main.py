@@ -112,7 +112,7 @@ def get_args_parser():
     parser.add_argument('--global_threshold', default=0.98, type=float)
     parser.add_argument('--local_threshold', default=0.8, type=float)
     parser.add_argument('--long_short_ratio', default=1.414, type=float)
-    parser.add_argument('--local_width_min', default=0.9, type=float)
+    parser.add_argument('--local_width_min', default=0.7, type=float)
     parser.add_argument('--local_height_min', default=0.6, type=float)
     parser.add_argument('--global_local_ratio', default=0.5, type=float)
     parser.add_argument('--save_threshold', default=0.9, type=float)
