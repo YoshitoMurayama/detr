@@ -36,8 +36,7 @@ class CocoEvaluator(object):
 
         self.img_ids = []
         self.eval_imgs = {k: [] for k in iou_types}
-        # todo more change to eval_imgs like
-        self.anns = []
+        self.anns = {k: [] for k in iou_types}
 
     def update(self, predictions):
         img_ids = list(np.unique(list(predictions.keys())))
@@ -57,15 +56,14 @@ class CocoEvaluator(object):
             img_ids, eval_imgs = evaluate(coco_eval)
 
             self.eval_imgs[iou_type].append(eval_imgs)
-            if self.anns == []:
-                self.anns = list(coco_dt.anns.values())
-            else:
-                self.anns += list(coco_dt.anns.values())
+            self.anns[iou_type] += list(coco_dt.anns.values()).copy()
 
     def synchronize_between_processes(self):
         for iou_type in self.iou_types:
             self.eval_imgs[iou_type] = np.concatenate(self.eval_imgs[iou_type], 2)
-            create_common_coco_eval(self.coco_eval[iou_type], self.img_ids, self.eval_imgs[iou_type])
+            create_common_coco_eval(
+                self.coco_eval[iou_type], self.img_ids, self.eval_imgs[iou_type]
+            )
 
     def accumulate(self):
         for coco_eval in self.coco_eval.values():

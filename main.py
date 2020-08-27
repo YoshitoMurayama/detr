@@ -255,7 +255,9 @@ def main(args):
             # extra checkpoint before LR drop and every 100 epochs
             if mAP > ref_mAP:
                 ref_mAP = mAP
-                checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}_{mAP:.4f}.pth')
+                _suffix =  f'{epoch:04}_{mAP:.4f}.pth'
+                checkpoint_paths.append(output_dir / f'checkpoint{_suffix}')
+                utils.save_on_master(coco_evaluator.coco_eval["bbox"], output_dir / f"eval{_suffix}")
             elif (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 10 == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             for checkpoint_path in checkpoint_paths:
@@ -284,7 +286,7 @@ def main(args):
                     if epoch % 50 == 0:
                         filenames.append(f'{epoch:03}.pth')
                     for name in filenames:
-                        torch.save(coco_evaluator.coco_eval["bbox"].eval,
+                        torch.save(coco_evaluator.coco_eval["bbox"],#.eval,
                                    output_dir / "eval" / name)
 
     total_time = time.time() - start_time
