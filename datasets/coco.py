@@ -121,25 +121,20 @@ def make_coco_transforms(image_set, args):
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    #base_scales = [480,  537,  595,  653,  711,  768,  826,  884,  942, 1000]
-    base_scales = np.linspace(480, 1000, args.num_scales_div).astype('int')
+    scale_factors = np.r_[1, np.cumprod(np.ones(args.div - 1 + args.gap) - args.delta / args.target_short)]
+    scales = (scale_factors * args.target_short).astype('int')
+    local_scales = list(scales[:args.div])
+    train_scales = list(scales[args.gap:args.gap + args.div])
 
-    train_scales = [int(x * args.scale_factor) for x in base_scales]
-    train_max = max(train_scales)
-    valid_scale = int(train_max * args.valid_scale)
-    valid_max = int(valid_scale * args.long_short_ratio)
-    train_max = int(train_max * args.long_short_ratio)
-    #local_scales = [int(x * args.valid_scale / args.global_threshold) for x in train_scales]
-    local_scales = [int(x * args.valid_scale) for x in train_scales]
-    #local_threshold = max(local_scales) * args.local_threshold
-    #local_scales = [x for x in local_scales if x >= local_threshold]
+    train_max = int(max(train_scales) * args.long_short_ratio)
     local_max = int(max(local_scales) * args.long_short_ratio)
+    valid_scale = max(local_scales)
     all_range = [np.clip(args.global_threshold, 0.1, 0.999), 1]
     width_range = [np.clip(args.local_width_min, 0.1, 0.999), args.local_threshold]
     height_range = [np.clip(args.local_height_min, 0.1, 0.999), args.local_threshold]
     print('train_scales : ', train_scales, train_max)
     print('local_scales : ', local_scales, local_max)
-    print('valid_scale : ', valid_scale, valid_max)
+    print('valid_scale : ', valid_scale, local_max)
     print('global crop : ', all_range, all_range)
     print('local crop : ', width_range, height_range)
 
@@ -161,7 +156,7 @@ def make_coco_transforms(image_set, args):
 
     if image_set == 'val':
         return T.Compose([
-            T.RandomResize([valid_scale], max_size=valid_max),
+            T.RandomResize([valid_scale], max_size=local_max),
             normalize,
         ])
 
