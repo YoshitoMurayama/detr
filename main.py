@@ -106,10 +106,11 @@ def get_args_parser():
     parser.add_argument('--adjust_cost_bbox', default=None, type=float)
     parser.add_argument('--pretrained', default='', help='weight from checkpoint')
     parser.add_argument('--num_classes', default=91, type=int)
-    parser.add_argument('--div', default=11, type=int)
-    parser.add_argument('--gap', default=0, type=int)
+    parser.add_argument('--delta', default=30, type=int)
     parser.add_argument('--target_short', default=1000, type=int)
-    parser.add_argument('--delta', default=80, type=int)
+    parser.add_argument('--target_short_min', default=600, type=int)
+    parser.add_argument('--global_short_max', default=1000, type=int)
+    parser.add_argument('--global_short_min', default=800, type=int)
     parser.add_argument('--long_short_ratio', default=1.414, type=float)
     parser.add_argument('--global_threshold', default=0.98, type=float)
     parser.add_argument('--local_threshold', default=0.8, type=float)
@@ -273,6 +274,7 @@ def main(args):
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      **{f'test_{k}': v for k, v in test_stats.items()},
                      'epoch': epoch,
+                     'mAP': mAP,
                      'n_parameters': n_parameters}
 
         if args.output_dir and utils.is_main_process():

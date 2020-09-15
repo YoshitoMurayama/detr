@@ -121,10 +121,13 @@ def make_coco_transforms(image_set, args):
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    scale_factors = np.r_[1, np.cumprod(np.ones(args.div - 1 + args.gap) - args.delta / args.target_short)]
-    scales = (scale_factors * args.target_short).astype('int')
-    local_scales = list(scales[:args.div])
-    train_scales = list(scales[args.gap:args.gap + args.div])
+    idx = np.cumsum(np.r_[[0, 1], np.arange(1, 100 - 1)])
+    scale_factors = np.r_[1, np.cumprod(np.ones(idx.max() + 1) - args.delta / args.target_short)]
+    scales = (scale_factors * args.target_short).astype('int')[idx]
+    scales = scales[scales>=400]
+    mask = np.logical_and(args.global_short_min <= scales, scales <= args.global_short_max)
+    train_scales = list(scales[mask])
+    local_scales = list(scales[scales > args.target_short_min])
 
     train_max = int(max(train_scales) * args.long_short_ratio)
     local_max = int(max(local_scales) * args.long_short_ratio)
