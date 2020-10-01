@@ -193,6 +193,7 @@ def main(args):
 
     output_dir = Path(args.output_dir)
     if args.resume:
+        print(args.resume)
         if args.resume.startswith('https'):
             checkpoint = torch.hub.load_state_dict_from_url(
                 args.resume, map_location='cpu', check_hash=True)
@@ -210,6 +211,8 @@ def main(args):
                 args.pretrained, map_location='cpu', check_hash=True)
         else:
             checkpoint = torch.load(args.pretrained, map_location='cpu')
+
+        print('load pretrained checkpoint {}'.format(args.pretrained))
         pretrained_state = checkpoint['model']
         model_state = model_without_ddp.state_dict()
         # discard shape mismatch / irrelevant keys in predtrained
@@ -260,7 +263,7 @@ def main(args):
                 _suffix =  f'{epoch:04}_{mAP:.4f}.pth'
                 checkpoint_paths.append(output_dir / f'checkpoint{_suffix}')
                 utils.save_on_master(coco_evaluator.coco_eval["bbox"], output_dir / f"eval{_suffix}")
-            elif (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 10 == 0:
+            elif (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 5 == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({

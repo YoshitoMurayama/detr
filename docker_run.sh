@@ -1,0 +1,1 @@
+sudo docker run -d -it -e NVIDIA_VISIBLE_DEVICES=all --shm-size=128g -e http_proxy="${http_proxy}" -e https_proxy="${https_proxy}" --name health_detr --runtime=nvidia -v /raid/workspace/murayama/detr:/root/detr -v ~/.vscode-server:/root/.vscode-server -v ~/.aws:/root/.aws -p 8181:22 health_detr
